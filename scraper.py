@@ -1,4 +1,3 @@
-
 # -*- coding: utf-8 -*-
 
 #### IMPORTS 1.0
@@ -9,8 +8,7 @@ import scraperwiki
 import urllib2
 from datetime import datetime
 from bs4 import BeautifulSoup
-import requests
-from dateutil.parser import parse
+
 
 #### FUNCTIONS 1.0
 
@@ -53,7 +51,7 @@ def validateURL(url):
         else:
             ext = os.path.splitext(url)[1]
         validURL = r.getcode() == 200
-        validFiletype = ext in ['.csv', '.xls', '.xlsx', '.docx']
+        validFiletype = ext.lower() in ['.csv', '.xls', '.xlsx']
         return validURL, validFiletype
     except:
         print ("Error validating URL.")
@@ -116,8 +114,7 @@ for link in links:
     if 'march 2014' in Mth:
         csvYr = Mth.split('\xc2\xa0')[-1]
         Mth = Mth.split('\xc2\xa0')[0]
-    dt_m = parse(Mth).strftime('%b')
-    csvMth = dt_m
+    csvMth = Mth[:3]
     if len(csvYr) == 2:
         csvYr = '20'+csvYr
     csvMth = convert_mth_strings(csvMth.upper())
