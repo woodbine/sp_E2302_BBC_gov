@@ -11,6 +11,7 @@ from bs4 import BeautifulSoup
 
 
 #### FUNCTIONS 1.0
+import requests     # importing requests to validate urls
 
 def validateFilename(filename):
     filenameregex = '^[a-zA-Z0-9]+_[a-zA-Z0-9]+_[a-zA-Z0-9]+_[0-9][0-9][0-9][0-9]_[0-9QY][0-9]$'
@@ -38,19 +39,19 @@ def validateFilename(filename):
 
 def validateURL(url):
     try:
-        r = urllib2.urlopen(url)
+        r = requests.get(url)
         count = 1
-        while r.getcode() == 500 and count < 4:
+        while r.status_code == 500 and count < 4:
             print ("Attempt {0} - Status code: {1}. Retrying.".format(count, r.status_code))
             count += 1
-            r = urllib2.urlopen(url)
+            r = requests.get(url)
         sourceFilename = r.headers.get('Content-Disposition')
 
         if sourceFilename:
             ext = os.path.splitext(sourceFilename)[1].replace('"', '').replace(';', '').replace(' ', '')
         else:
             ext = os.path.splitext(url)[1]
-        validURL = r.getcode() == 200
+        validURL = r.status_code == 200
         validFiletype = ext.lower() in ['.csv', '.xls', '.xlsx']
         return validURL, validFiletype
     except:
@@ -85,9 +86,12 @@ def convert_mth_strings ( mth_string ):
 #### VARIABLES 1.0
 
 entity_id = "E2302_BBC_gov"
-url = "https://www.blackpool.gov.uk/Your-Council/Transparency-and-open-data/Budget,-spending-and-procurement/Payments-over-250.aspx"
+urls = ["https://www.blackpool.gov.uk/Your-Council/Transparency-and-open-data/Budget,-spending-and-procurement/Payments-over-250.aspx",
+        'https://www.blackpool.gov.uk/Your-Council/Transparency-and-open-data/Budget,-spending-and-procurement/Payments-over-250-archive.aspx']
 errors = 0
 data = []
+url = 'http://example.com'
+
 
 #### READ HTML 1.0
 
@@ -97,28 +101,29 @@ soup = BeautifulSoup(html, 'lxml')
 
 
 #### SCRAPE DATA
-
-
-block = soup.find('div', attrs = {'id':'L3_articleContent'})
-links = block.findAll('a', 'sys_15')
-for link in links:
-    url = 'https://www.blackpool.gov.uk' + link['href']
-    csvfile = link.text.strip()
-    Mth = csvfile.split('[')[0].strip().split(' ')[-2:]
-    Mth = ''.join(Mth).encode('utf-8')
-    csvYr = csvfile.split('[')[0].strip().split(' ')[-1]
-    if csvYr == 'September':
-        csvYr = '12'
-    if '250' in Mth:
-        Mth = Mth.split('250')[-1]
-    if 'march 2014' in Mth:
-        csvYr = Mth.split('\xc2\xa0')[-1]
-        Mth = Mth.split('\xc2\xa0')[0]
-    csvMth = Mth[:3]
-    if len(csvYr) == 2:
-        csvYr = '20'+csvYr
-    csvMth = convert_mth_strings(csvMth.upper())
-    data.append([csvYr, csvMth, url])
+for url in urls:
+        html = requests.get(url)
+        soup = BeautifulSoup(html.text, 'lxml')
+        links = soup.findAll('a', 'sys_15')
+        for link in links:
+            if 'Transparency' in link.text:
+                url = 'https://www.blackpool.gov.uk' + link['href']
+                csvfile = link.text.strip()
+                Mth = csvfile.split('[')[0].strip().split(' ')[-2:]
+                Mth = ''.join(Mth).encode('utf-8')
+                csvYr = csvfile.split('[')[0].strip().split(' ')[-1]
+                if csvYr == 'September':
+                    csvYr = '12'
+                if '250' in Mth:
+                    Mth = Mth.split('250')[-1]
+                if 'march 2014' in Mth:
+                    csvYr = Mth.split('\xc2\xa0')[-1]
+                    Mth = Mth.split('\xc2\xa0')[0]
+                csvMth = Mth[:3]
+                if len(csvYr) == 2:
+                    csvYr = '20' + csvYr
+                csvMth = convert_mth_strings(csvMth.upper())
+                data.append([csvYr, csvMth, url])
 
 
 #### STORE DATA 1.0
